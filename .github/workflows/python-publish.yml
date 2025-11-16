@@ -1,0 +1,95 @@
+name: 定时更新域名列表
+
+on:
+  schedule:
+    # 北京时间 10:00 (UTC 02:00)
+    - cron: '0 2 * * *'
+    # 北京时间 17:00 (UTC 09:00)
+    - cron: '0 9 * * *'
+    # 北京时间 22:00 (UTC 14:00)
+    - cron: '0 14 * * *'
+  
+  # 允许手动触发
+  workflow_dispatch:
+  
+  # 推送到 main 分支时也触发（可选）
+  push:
+    branches:
+      - main
+    paths:
+      - 'main.py'
+      - '.github/workflows/*.yml'
+
+jobs:
+  update-list:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. 检出代码
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # 2. 设置 Python 环境
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # 3. 运行脚本（无需安装依赖）
+      - name: 运行 main.py
+        run: |
+          echo "开始执行 main.py..."
+          python main.py
+          echo "执行完成"
+      
+      # 4. 检查生成的文件
+      - name: 检查生成的文件
+        run: |
+          if [ -f list.list ]; then
+            echo "✅ list.list 文件已生成"
+            echo "域名数量: $(wc -l < list.list)"
+            echo ""
+            echo "前10行预览:"
+            head -10 list.list
+          elif [ -f host/list.list ]; then
+            echo "✅ host/list.list 文件已生成"
+            echo "域名数量: $(wc -l < host/list.list)"
+            echo ""
+            echo "前10行预览:"
+            head -10 host/list.list
+          else
+            echo "⚠️ 未找到输出文件"
+            echo "当前目录内容:"
+            ls -la
+          fi
+      
+      # 5. 提交更改
+      - name: 提交更新的文件
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # 添加所有更改
+          git add .
+          
+          # 检查是否有更改
+          if git diff --staged --quiet; then
+            echo "📝 没有检测到更改，无需提交"
+          else
+            echo "📝 检测到更改，准备提交..."
+            git commit -m "🤖 自动更新域名列表 - $(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"
+            git push
+            echo "✅ 更改已推送到远程仓库"
+          fi
+      
+      # 6. 显示执行摘要
+      - name: 显示执行摘要
+        if: always()
+        run: |
+          echo "================================"
+          echo "执行时间 (UTC): $(date +'%Y-%m-%d %H:%M:%S')"
+          echo "执行时间 (北京): $(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"
+          echo "Python 版本: $(python --version)"
+          echo "================================"
