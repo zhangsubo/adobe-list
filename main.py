@@ -2,7 +2,7 @@ import re
 import sys
 import os
 import ipaddress
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 
@@ -48,7 +48,13 @@ def extract_domains(text: str) -> list:
 
 def fetch_text(url: str) -> str:
     try:
-        with urlopen(url, timeout=30) as resp:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        }
+        req = Request(url, headers=headers)
+        with urlopen(req, timeout=30) as resp:
             data = resp.read()
         try:
             return data.decode("utf-8")
